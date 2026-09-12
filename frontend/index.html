@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>iRacing Cert Flag Generator</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main>
+    <h1>iRacing Certificate &rarr; Flag</h1>
+    <p class="subtitle">Upload your iRacing achievement certificate PDF and get back a high-resolution checkered-flag-bordered JPG, ready to print.</p>
+
+    <form id="flag-form">
+      <label class="field">
+        <span>Certificate PDF</span>
+        <input type="file" id="pdf-input" accept="application/pdf" required />
+      </label>
+
+      <label class="field">
+        <span>Output size</span>
+        <select id="preset-input">
+          <option value="small">Small &mdash; 1800&times;1200 (12&times;8in @150dpi)</option>
+          <option value="medium">Medium &mdash; 3600&times;2400 (24&times;16in @150dpi)</option>
+          <option value="large" selected>Large &mdash; 5400&times;3600 (36&times;24in @150dpi)</option>
+        </select>
+      </label>
+
+      <button type="submit" id="generate-btn" disabled>Generate Flag</button>
+    </form>
+
+    <p id="status" role="status"></p>
+
+    <div id="result" hidden>
+      <img id="preview" alt="Generated flag preview" />
+      <a id="download-link" download="iracing-flag.jpg">Download full-resolution JPG</a>
+    </div>
+
+    <p class="disclaimer">Files are processed automatically and deleted within 24 hours. Nothing is stored long-term. Not affiliated with or endorsed by iRacing.</p>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>

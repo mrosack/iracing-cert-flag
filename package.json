@@ -1,0 +1,9 @@
+{
+  "name": "iracing-cert-flag",
+  "private": true,
+  "workspaces": [
+    "infra",
+    "lambda/presign",
+    "lambda/process"
+  ]
+}

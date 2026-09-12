@@ -1,0 +1,95 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+
+jobs:
+  synth:
+    name: Type-check and synth
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - run: npm ci
+
+      - name: Type-check lambdas and infra
+        run: |
+          npm run --workspace lambda/presign build
+          npm run --workspace lambda/process build
+          npm run --workspace infra build
+
+      - name: cdk synth
+        working-directory: infra
+        run: npx cdk synth
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cdk-out
+          path: infra/cdk.out
+          retention-days: 1
+
+  diff:
+    name: cdk diff (PR preview, no deploy)
+    if: github.event_name == 'pull_request'
+    needs: synth
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - run: npm ci
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: cdk diff
+        working-directory: infra
+        run: npx cdk diff
+
+  deploy:
+    name: cdk deploy
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: synth
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - run: npm ci
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: cdk deploy
+        working-directory: infra
+        run: npx cdk deploy --require-approval never
