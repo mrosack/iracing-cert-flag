@@ -1,43 +1,49 @@
 export interface CheckerboardOptions {
-  columnsPerSide?: number;
   colorA?: string;
   colorB?: string;
 }
 
 /**
- * Builds an SVG for a canvasWidth x canvasHeight background: a checkerboard
- * pattern filling the left `borderWidth` px and right `borderWidth` px columns
- * (full height), white everywhere else. The certificate image is composited
- * on top of the white middle area by the caller.
+ * Builds an SVG for a canvasWidth x canvasHeight background: a single column of
+ * alternating black/white squares filling the left edge and a mirrored column
+ * filling the right edge (both justified flush to their respective edges). The
+ * square size is chosen so a whole number of them tiles the full canvas height
+ * exactly - no partial square at the top or bottom - by rounding the cell size
+ * up to the nearest whole divisor of canvasHeight that's still >= targetBorderWidth.
+ * That means the column can end up a little wider than targetBorderWidth; the
+ * caller composites the certificate on top, which clips off that excess rather
+ * than leaving a gap between the checkers and the certificate.
  */
 export function buildBackgroundSvg(
   canvasWidth: number,
   canvasHeight: number,
-  borderWidth: number,
+  targetBorderWidth: number,
   options: CheckerboardOptions = {}
 ): string {
-  const { columnsPerSide = 2, colorA = "#000000", colorB = "#ffffff" } = options;
+  const { colorA = "#000000", colorB = "#ffffff" } = options;
 
-  if (borderWidth <= 0) {
+  if (targetBorderWidth <= 0) {
     return `<svg xmlns="http://www.w3.org/2000/svg" width="${canvasWidth}" height="${canvasHeight}">
       <rect x="0" y="0" width="${canvasWidth}" height="${canvasHeight}" fill="${colorB}"/>
     </svg>`;
   }
 
-  const cellSize = borderWidth / columnsPerSide;
-  const tile = cellSize * 2;
+  const rows = Math.max(1, Math.floor(canvasHeight / targetBorderWidth));
+  const cellSize = canvasHeight / rows;
+
+  const squares: string[] = [];
+  for (let i = 0; i < rows; i++) {
+    const color = i % 2 === 0 ? colorA : colorB;
+    const y = i * cellSize;
+    squares.push(`<rect x="0" y="${y}" width="${cellSize}" height="${cellSize}" fill="${color}"/>`);
+    squares.push(
+      `<rect x="${canvasWidth - cellSize}" y="${y}" width="${cellSize}" height="${cellSize}" fill="${color}"/>`
+    );
+  }
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${canvasWidth}" height="${canvasHeight}">
-    <defs>
-      <pattern id="checker" width="${tile}" height="${tile}" patternUnits="userSpaceOnUse">
-        <rect x="0" y="0" width="${tile}" height="${tile}" fill="${colorB}"/>
-        <rect x="0" y="0" width="${cellSize}" height="${cellSize}" fill="${colorA}"/>
-        <rect x="${cellSize}" y="${cellSize}" width="${cellSize}" height="${cellSize}" fill="${colorA}"/>
-      </pattern>
-    </defs>
     <rect x="0" y="0" width="${canvasWidth}" height="${canvasHeight}" fill="${colorB}"/>
-    <rect x="0" y="0" width="${borderWidth}" height="${canvasHeight}" fill="url(#checker)"/>
-    <rect x="${canvasWidth - borderWidth}" y="0" width="${borderWidth}" height="${canvasHeight}" fill="url(#checker)"/>
+    ${squares.join("\n    ")}
   </svg>`;
 }
 
