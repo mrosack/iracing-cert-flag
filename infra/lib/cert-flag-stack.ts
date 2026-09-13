@@ -77,9 +77,10 @@ export class CertFlagStack extends cdk.Stack {
       code: lambda.DockerImageCode.fromImageAsset(path.join(__dirname, "../../lambda/process")),
       memorySize: 2048,
       timeout: Duration.seconds(30),
-      // Primary cost/abuse guard for a public, unauthenticated endpoint. Raise once
-      // real traffic patterns are known.
-      reservedConcurrentExecutions: 5,
+      // No reservedConcurrentExecutions: Lambda requires at least 10 unreserved executions
+      // left account-wide, which this account's default concurrency limit doesn't leave room
+      // for alongside a reservation. Abuse protection instead comes from the WAF rate rule and
+      // the API Gateway stage throttle below. Revisit if the account limit is raised.
       environment: {
         ASSETS_BUCKET: assetsBucket.bucketName,
         MAX_UPLOAD_BYTES: String(MAX_UPLOAD_BYTES),
