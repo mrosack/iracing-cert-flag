@@ -98,13 +98,15 @@ export class CertFlagStack extends cdk.Stack {
       },
     });
 
+    // Routes are prefixed with /api because CloudFront forwards the full request path
+    // (including /api) to this origin for the "/api/*" behavior below - it doesn't strip it.
     httpApi.addRoutes({
-      path: "/presign",
+      path: "/api/presign",
       methods: [apigwv2.HttpMethod.POST],
       integration: new apigwv2Integrations.HttpLambdaIntegration("PresignIntegration", presignFn),
     });
     httpApi.addRoutes({
-      path: "/process",
+      path: "/api/process",
       methods: [apigwv2.HttpMethod.POST],
       integration: new apigwv2Integrations.HttpLambdaIntegration("ProcessIntegration", processFn),
     });
