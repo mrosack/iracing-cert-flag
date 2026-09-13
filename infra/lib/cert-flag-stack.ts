@@ -127,7 +127,11 @@ export class CertFlagStack extends cdk.Stack {
           viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.HTTPS_ONLY,
           allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
           cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
-          originRequestPolicy: cloudfront.OriginRequestPolicy.ALL_VIEWER,
+          // ALL_VIEWER forwards the original Host header (the CloudFront domain), which
+          // API Gateway's execute-api endpoint rejects with 403 Forbidden since it doesn't
+          // match its own domain. This variant forwards everything else but lets CloudFront
+          // set Host to the origin's own domain.
+          originRequestPolicy: cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
         },
       },
       defaultRootObject: "index.html",
