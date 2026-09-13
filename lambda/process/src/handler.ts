@@ -57,7 +57,7 @@ export const handler = async (event: { body?: string }) => {
     const getResult = await s3.send(new GetObjectCommand({ Bucket: BUCKET, Key: uploadKey }));
     const pdfBuffer = Buffer.from(await getResult.Body!.transformToByteArray());
 
-    const certPng = await rasterizePdfFirstPage(pdfBuffer);
+    const certPng = await rasterizePdfFirstPage(pdfBuffer, preset.height);
     const jpgBuffer = await compose(certPng, preset);
 
     await s3.send(

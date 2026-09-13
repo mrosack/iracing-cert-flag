@@ -69,6 +69,8 @@ form.addEventListener("submit", async (event) => {
 
   generateBtn.disabled = true;
   resultEl.hidden = true;
+  previewImg.hidden = true;
+  previewImg.removeAttribute("src");
 
   try {
     setStatus("Requesting upload slot...");
@@ -80,10 +82,18 @@ form.addEventListener("submit", async (event) => {
     setStatus("Rendering your flag (this can take a few seconds)...");
     const { downloadUrl } = await postJson("/api/process", { jobId, preset: presetInput.value });
 
-    previewImg.src = downloadUrl;
     downloadLink.href = downloadUrl;
     resultEl.hidden = false;
-    setStatus("Done!");
+    setStatus("Loading preview...");
+
+    previewImg.onload = () => {
+      previewImg.hidden = false;
+      setStatus("Done!");
+    };
+    previewImg.onerror = () => {
+      setStatus("Flag generated - preview failed to load, but the download link below works.", true);
+    };
+    previewImg.src = downloadUrl;
   } catch (err) {
     setStatus(err.message || "Something went wrong.", true);
   } finally {
