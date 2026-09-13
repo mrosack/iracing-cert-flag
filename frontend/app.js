@@ -80,20 +80,21 @@ form.addEventListener("submit", async (event) => {
     await uploadToS3(uploadUrl, uploadFields, file);
 
     setStatus("Rendering your flag (this can take a few seconds)...");
-    const { downloadUrl } = await postJson("/api/process", { jobId, preset: presetInput.value });
+    const { previewUrl, downloadUrl } = await postJson("/api/process", { jobId, preset: presetInput.value });
 
     downloadLink.href = downloadUrl;
-    resultEl.hidden = false;
     setStatus("Loading preview...");
 
     previewImg.onload = () => {
       previewImg.hidden = false;
+      resultEl.hidden = false;
       setStatus("Done!");
     };
     previewImg.onerror = () => {
+      resultEl.hidden = false;
       setStatus("Flag generated - preview failed to load, but the download link below works.", true);
     };
-    previewImg.src = downloadUrl;
+    previewImg.src = previewUrl;
   } catch (err) {
     setStatus(err.message || "Something went wrong.", true);
   } finally {

@@ -64,11 +64,25 @@ export const handler = async (event: { body?: string }) => {
       new PutObjectCommand({ Bucket: BUCKET, Key: resultKey, Body: jpgBuffer, ContentType: "image/jpeg" })
     );
 
-    const downloadUrl = await getSignedUrl(s3, new GetObjectCommand({ Bucket: BUCKET, Key: resultKey }), {
+    // Two presigned URLs to the same object: previewUrl renders inline for the <img> preview,
+    // downloadUrl carries Content-Disposition: attachment so clicking it actually saves the
+    // file instead of opening it in the browser tab. The `download` attribute on an <a> tag
+    // only works for same-origin URLs, and this presigned URL points at S3 directly (a
+    // different origin from the CloudFront site), so it's ignored without this.
+    const previewUrl = await getSignedUrl(s3, new GetObjectCommand({ Bucket: BUCKET, Key: resultKey }), {
       expiresIn: DOWNLOAD_URL_TTL_SECONDS,
     });
+    const downloadUrl = await getSignedUrl(
+      s3,
+      new GetObjectCommand({
+        Bucket: BUCKET,
+        Key: resultKey,
+        ResponseContentDisposition: 'attachment; filename="iracing-flag.jpg"',
+      }),
+      { expiresIn: DOWNLOAD_URL_TTL_SECONDS }
+    );
 
-    return jsonResponse(200, { downloadUrl });
+    return jsonResponse(200, { previewUrl, downloadUrl });
   } catch (err) {
     console.error("process failed", err);
     return jsonResponse(400, { error: (err as Error).message || "Failed to process certificate" });
