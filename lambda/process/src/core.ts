@@ -23,7 +23,7 @@ const CERT_ROWS = 6;
  * Pure function: no filesystem or AWS calls, safe to unit test directly.
  */
 export async function compose(certPngBuffer: Buffer, preset: Preset, options: ComposeOptions = {}): Promise<Buffer> {
-  const { jpegQuality = 92 } = options;
+  const { jpegQuality = 100 } = options;
   const canvasW = preset.width;
   const canvasH = preset.height;
 
