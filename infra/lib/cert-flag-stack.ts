@@ -172,11 +172,15 @@ export class CertFlagStack extends cdk.Stack {
     cfnDistribution.addPropertyOverride("DistributionConfig.WebACLId", webAcl.attrArn);
 
     // --- Deploy the static frontend ---
+    // No hashed/versioned filenames, so browsers/CloudFront must revalidate with S3 on every
+    // request rather than trusting a cached copy - otherwise a stale index.html or app.js can
+    // stick around after a deploy even with the invalidation below.
     new s3deploy.BucketDeployment(this, "DeploySite", {
       sources: [s3deploy.Source.asset(path.join(__dirname, "../../frontend"))],
       destinationBucket: siteBucket,
       distribution,
       distributionPaths: ["/*"],
+      cacheControl: [s3deploy.CacheControl.noCache()],
     });
 
     // --- Billing alarm ---
