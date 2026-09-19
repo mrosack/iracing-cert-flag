@@ -4,53 +4,64 @@ export interface CheckerboardOptions {
 }
 
 /**
- * Builds an SVG for a canvasWidth x canvasHeight background: a single column of
- * alternating black/white squares filling the left edge and a mirrored column
- * filling the right edge (both justified flush to their respective edges). The
- * square size is chosen so a whole number of them tiles the full canvas height
- * exactly - no partial square at the top or bottom - by rounding the cell size
- * up to the nearest whole divisor of canvasHeight that's still >= targetBorderWidth.
- * That means the column can end up a little wider than targetBorderWidth; the
- * caller composites the certificate on top, which clips off that excess rather
- * than leaving a gap between the checkers and the certificate.
+ * Builds an SVG for a canvasWidth x canvasHeight background: a true 2D checkerboard of
+ * `cols` x `rows` squares covering the entire canvas. Since the canvas is exactly 3:2 and
+ * cols:rows is exactly 12:8 (also 3:2), each square comes out perfectly square with no
+ * rounding - a real checkered-flag pattern, not independently-sized border strips. The
+ * certificate is composited on top by the caller, covering a smaller block of the same
+ * grid, so the exposed squares form a uniform-size frame around it.
  */
 export function buildBackgroundSvg(
   canvasWidth: number,
   canvasHeight: number,
-  targetBorderWidth: number,
+  cols: number,
+  rows: number,
   options: CheckerboardOptions = {}
 ): string {
   const { colorA = "#000000", colorB = "#ffffff" } = options;
-
-  if (targetBorderWidth <= 0) {
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="${canvasWidth}" height="${canvasHeight}">
-      <rect x="0" y="0" width="${canvasWidth}" height="${canvasHeight}" fill="${colorB}"/>
-    </svg>`;
-  }
-
-  const rows = Math.max(1, Math.floor(canvasHeight / targetBorderWidth));
-  const cellSize = canvasHeight / rows;
+  const cellWidth = canvasWidth / cols;
+  const cellHeight = canvasHeight / rows;
 
   const squares: string[] = [];
-  for (let i = 0; i < rows; i++) {
-    const color = i % 2 === 0 ? colorA : colorB;
-    const y = i * cellSize;
-    squares.push(`<rect x="0" y="${y}" width="${cellSize}" height="${cellSize}" fill="${color}"/>`);
-    squares.push(
-      `<rect x="${canvasWidth - cellSize}" y="${y}" width="${cellSize}" height="${cellSize}" fill="${color}"/>`
-    );
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      const color = (row + col) % 2 === 0 ? colorA : colorB;
+      squares.push(
+        `<rect x="${col * cellWidth}" y="${row * cellHeight}" width="${cellWidth}" height="${cellHeight}" fill="${color}"/>`
+      );
+    }
   }
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${canvasWidth}" height="${canvasHeight}">
-    <rect x="0" y="0" width="${canvasWidth}" height="${canvasHeight}" fill="${colorB}"/>
     ${squares.join("\n    ")}
   </svg>`;
 }
 
-/** Thin black seam lines at the checker/cert boundaries, drawn as a final overlay. */
-export function buildDividerSvg(canvasWidth: number, canvasHeight: number, borderWidth: number, lineWidth: number): string {
+/**
+ * A thin light-gray rectangle outline traced just inside the certificate's own edges (not
+ * extended across the full canvas, and not bleeding out into the checker squares), drawn as
+ * a final overlay so the certificate's white background doesn't bleed invisibly into a white
+ * checker square at the seam - it reads clearly against both black and white squares.
+ */
+export function buildBorderSvg(
+  canvasWidth: number,
+  canvasHeight: number,
+  certX: number,
+  certY: number,
+  certWidth: number,
+  certHeight: number,
+  lineWidth: number,
+  color = "#999999"
+): string {
+  // SVG strokes are centered on the path by default, so the path is inset by half the
+  // stroke width - that way the stroke's outer edge lands exactly on the cert boundary
+  // instead of straddling it and spilling into the checkers.
+  const x = certX + lineWidth / 2;
+  const y = certY + lineWidth / 2;
+  const w = certWidth - lineWidth;
+  const h = certHeight - lineWidth;
+
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${canvasWidth}" height="${canvasHeight}">
-    <rect x="${borderWidth - lineWidth / 2}" y="0" width="${lineWidth}" height="${canvasHeight}" fill="#000000"/>
-    <rect x="${canvasWidth - borderWidth - lineWidth / 2}" y="0" width="${lineWidth}" height="${canvasHeight}" fill="#000000"/>
+    <rect x="${x}" y="${y}" width="${w}" height="${h}" fill="none" stroke="${color}" stroke-width="${lineWidth}"/>
   </svg>`;
 }

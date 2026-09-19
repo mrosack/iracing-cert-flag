@@ -1,21 +1,29 @@
 import sharp from "sharp";
 import { Preset } from "./presets";
-import { buildBackgroundSvg, buildDividerSvg } from "./checkerboard";
+import { buildBackgroundSvg, buildBorderSvg } from "./checkerboard";
 
 export interface ComposeOptions {
-  /** Draw a thin black seam line between the checker border and the cert. Off by default. */
-  divider?: boolean;
   jpegQuality?: number;
 }
 
-const MIN_BORDER_FRACTION = 0.03; // below this, fall back to letterboxing instead of near-zero checker strips
+// The canvas (always 3:2) is treated as a GRID_COLS x GRID_ROWS checkerboard - 12:8 is also
+// exactly 3:2, so every square comes out perfectly square, a real checkered-flag pattern
+// rather than independently-sized border strips. The certificate covers a smaller
+// CERT_COLS x CERT_ROWS block of that same grid, centered, leaving a uniform 2-square
+// margin left/right and 1-square margin top/bottom - so no matter which edge a print shop's
+// hardware (e.g. a flag's sewn grommet header) lands on, only checker squares are
+// sacrificed, never certificate content.
+const GRID_COLS = 12;
+const GRID_ROWS = 8;
+const CERT_COLS = 8;
+const CERT_ROWS = 6;
 
 /**
  * Composes a rasterized certificate PNG onto a checkered-flag-bordered canvas.
  * Pure function: no filesystem or AWS calls, safe to unit test directly.
  */
 export async function compose(certPngBuffer: Buffer, preset: Preset, options: ComposeOptions = {}): Promise<Buffer> {
-  const { divider = false, jpegQuality = 92 } = options;
+  const { jpegQuality = 92 } = options;
   const canvasW = preset.width;
   const canvasH = preset.height;
 
@@ -23,34 +31,28 @@ export async function compose(certPngBuffer: Buffer, preset: Preset, options: Co
   if (!certMeta.width || !certMeta.height) {
     throw new Error("Could not read rasterized certificate image dimensions");
   }
-  const certAspect = certMeta.width / certMeta.height;
 
-  let certW = Math.round(certAspect * canvasH);
-  let certH = canvasH;
-  let top = 0;
-
-  const minCertWidth = Math.round(canvasW * (1 - 2 * MIN_BORDER_FRACTION));
-  if (certW > minCertWidth) {
-    // Certificate is unusually wide relative to the canvas: clamp width and letterbox vertically instead.
-    certW = minCertWidth;
-    certH = Math.round(certW / certAspect);
-    top = Math.round((canvasH - certH) / 2);
-  }
-
-  const borderEach = Math.round((canvasW - certW) / 2);
+  const cellSize = canvasW / GRID_COLS;
+  const certW = CERT_COLS * cellSize;
+  const certH = CERT_ROWS * cellSize;
+  const left = ((GRID_COLS - CERT_COLS) / 2) * cellSize;
+  const top = ((GRID_ROWS - CERT_ROWS) / 2) * cellSize;
 
   const resizedCert = await sharp(certPngBuffer)
-    .resize(certW, certH, { fit: "fill" })
+    .resize(Math.round(certW), Math.round(certH), { fit: "fill" })
     .toBuffer();
 
-  const backgroundSvg = buildBackgroundSvg(canvasW, canvasH, borderEach);
-  let pipeline = sharp(Buffer.from(backgroundSvg)).composite([{ input: resizedCert, left: borderEach, top }]);
+  const backgroundSvg = buildBackgroundSvg(canvasW, canvasH, GRID_COLS, GRID_ROWS);
+  const lineWidth = Math.max(3, Math.round(canvasH * 0.0022));
+  const borderSvg = buildBorderSvg(canvasW, canvasH, left, top, certW, certH, lineWidth);
 
-  if (divider) {
-    const lineWidth = Math.max(2, Math.round(canvasH * 0.0017));
-    const dividerSvg = buildDividerSvg(canvasW, canvasH, borderEach, lineWidth);
-    pipeline = sharp(await pipeline.png().toBuffer()).composite([{ input: Buffer.from(dividerSvg) }]);
-  }
+  const composed = await sharp(Buffer.from(backgroundSvg))
+    .composite([{ input: resizedCert, left: Math.round(left), top: Math.round(top) }])
+    .png()
+    .toBuffer();
 
-  return pipeline.jpeg({ quality: jpegQuality, mozjpeg: true, chromaSubsampling: "4:4:4" }).toBuffer();
+  return sharp(composed)
+    .composite([{ input: Buffer.from(borderSvg) }])
+    .jpeg({ quality: jpegQuality, mozjpeg: true, chromaSubsampling: "4:4:4" })
+    .toBuffer();
 }
