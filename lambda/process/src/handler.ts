@@ -13,6 +13,13 @@ const s3 = new S3Client({});
 interface ProcessRequestBody {
   jobId: string;
   preset?: string;
+  filename?: string;
+}
+
+function deriveDownloadFilename(sourceName: string | undefined): string {
+  const base = (sourceName ?? "").replace(/\.pdf$/i, "").trim();
+  const sanitized = base.replace(/["\r\n\\]/g, "").slice(0, 200);
+  return `${sanitized || "iracing-flag"}.jpg`;
 }
 
 function jsonResponse(statusCode: number, body: unknown) {
@@ -72,12 +79,13 @@ export const handler = async (event: { body?: string }) => {
     const previewUrl = await getSignedUrl(s3, new GetObjectCommand({ Bucket: BUCKET, Key: resultKey }), {
       expiresIn: DOWNLOAD_URL_TTL_SECONDS,
     });
+    const downloadFilename = deriveDownloadFilename(request.filename);
     const downloadUrl = await getSignedUrl(
       s3,
       new GetObjectCommand({
         Bucket: BUCKET,
         Key: resultKey,
-        ResponseContentDisposition: 'attachment; filename="iracing-flag.jpg"',
+        ResponseContentDisposition: `attachment; filename="${downloadFilename}"`,
       }),
       { expiresIn: DOWNLOAD_URL_TTL_SECONDS }
     );

@@ -80,7 +80,11 @@ form.addEventListener("submit", async (event) => {
     await uploadToS3(uploadUrl, uploadFields, file);
 
     setStatus("Rendering your flag (this can take a few seconds)...");
-    const { previewUrl, downloadUrl } = await postJson("/api/process", { jobId, preset: presetInput.value });
+    const { previewUrl, downloadUrl } = await postJson("/api/process", {
+      jobId,
+      preset: presetInput.value,
+      filename: file.name,
+    });
 
     downloadLink.href = downloadUrl;
     setStatus("Loading preview...");
