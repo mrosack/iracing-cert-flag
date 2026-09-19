@@ -19,6 +19,18 @@ const CERT_COLS = 8;
 const CERT_ROWS = 6;
 
 /**
+ * Pixel size of the certificate's slot within the canvas for a given preset. Callers that
+ * rasterize the source PDF (e.g. the handler) should target this size directly rather than
+ * the full canvas size - rasterizing larger and then downscaling in compose() would apply a
+ * lossy resize on top of an already-rendered image, which visibly amplifies subtle gradient
+ * banding in certificate backgrounds into ringing artifacts.
+ */
+export function getCertPixelSize(preset: Preset): { width: number; height: number } {
+  const cellSize = preset.width / GRID_COLS;
+  return { width: Math.round(CERT_COLS * cellSize), height: Math.round(CERT_ROWS * cellSize) };
+}
+
+/**
  * Composes a rasterized certificate PNG onto a checkered-flag-bordered canvas.
  * Pure function: no filesystem or AWS calls, safe to unit test directly.
  */

@@ -1,7 +1,8 @@
 import { S3Client, GetObjectCommand, PutObjectCommand, HeadObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { rasterizePdfFirstPage } from "./rasterize";
-import { compose } from "./core";
+import { compose, getCertPixelSize } from "./core";
+import { flattenNearWhiteRadialShadings } from "./flattenShadings";
 import { resolvePreset } from "./presets";
 
 const BUCKET = process.env.ASSETS_BUCKET!;
@@ -64,7 +65,8 @@ export const handler = async (event: { body?: string }) => {
     const getResult = await s3.send(new GetObjectCommand({ Bucket: BUCKET, Key: uploadKey }));
     const pdfBuffer = Buffer.from(await getResult.Body!.transformToByteArray());
 
-    const certPng = await rasterizePdfFirstPage(pdfBuffer, preset.height);
+    const flattenedPdf = await flattenNearWhiteRadialShadings(pdfBuffer);
+    const certPng = await rasterizePdfFirstPage(flattenedPdf, getCertPixelSize(preset).height);
     const jpgBuffer = await compose(certPng, preset);
 
     await s3.send(

@@ -1,5 +1,6 @@
 import { rasterizePdfFirstPage } from "./rasterize";
-import { compose } from "./core";
+import { compose, getCertPixelSize } from "./core";
+import { flattenNearWhiteRadialShadings } from "./flattenShadings";
 import { resolvePreset } from "./presets";
 
 /**
@@ -10,7 +11,8 @@ import { resolvePreset } from "./presets";
 export const handler = async (event: { pdfBase64: string; preset?: string }) => {
   const preset = resolvePreset(event.preset);
   const pdfBuffer = Buffer.from(event.pdfBase64, "base64");
-  const certPng = await rasterizePdfFirstPage(pdfBuffer, preset.height);
+  const flattenedPdf = await flattenNearWhiteRadialShadings(pdfBuffer);
+  const certPng = await rasterizePdfFirstPage(flattenedPdf, getCertPixelSize(preset).height);
   const jpgBuffer = await compose(certPng, preset);
   return { jpgBase64: jpgBuffer.toString("base64") };
 };
