@@ -89,3 +89,59 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 }
 
 .disclaimer { font-size: 0.8rem; color: #888; margin-top: 2rem; margin-bottom: 0; }
+
+.link-button {
+  width: auto;
+  align-self: center;
+  padding: 0.25rem;
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 0.85rem;
+  font-weight: 400;
+  text-decoration: underline;
+}
+
+.link-button:hover { color: var(--accent); }
+
+#explain-modal {
+  /* No padding on the dialog itself so a click landing on it is unambiguously the backdrop. */
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
+  color: var(--fg);
+  max-width: 560px;
+  width: calc(100% - 2rem);
+  max-height: calc(100vh - 4rem);
+  /* The inner body scrolls, not the dialog - a scrollbar on the dialog itself would render
+     outside the rounded corners and square them off. Hiding overflow here makes the radius
+     clip the body's scrollbar instead. */
+  overflow: hidden;
+}
+
+/* Scoped to [open] so it doesn't override the UA's `dialog { display: none }` when closed. */
+#explain-modal[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+#explain-modal::backdrop { background: rgba(0, 0, 0, 0.6); }
+
+.modal-body {
+  padding: 1.5rem;
+  overflow-y: auto;
+}
+.modal-body h2 { margin-top: 0; font-size: 1.2rem; }
+.modal-body p { line-height: 1.5; }
+
+.modal-body img {
+  width: 100%;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  margin: 0.5rem 0 1rem;
+}
+
+.modal-body dl { margin: 0 0 1rem; }
+.modal-body dt { font-weight: 700; margin-top: 0.75rem; }
+.modal-body dd { margin: 0.2rem 0 0; color: #888; }

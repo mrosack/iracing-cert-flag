@@ -6,9 +6,9 @@ export interface ComposeOptions {
   jpegQuality?: number;
 }
 
-// The canvas (always 3:2) is treated as a GRID_COLS x GRID_ROWS checkerboard - 12:8 is also
-// exactly 3:2, so every square comes out perfectly square, a real checkered-flag pattern
-// rather than independently-sized border strips. The certificate covers a smaller
+// The finished flag area (always 3:2) is treated as a GRID_COLS x GRID_ROWS checkerboard -
+// 12:8 is also exactly 3:2, so every square comes out perfectly square, a real checkered-flag
+// pattern rather than independently-sized border strips. The certificate covers a smaller
 // CERT_COLS x CERT_ROWS block of that same grid, centered, leaving a uniform 2-square
 // margin left/right and 1-square margin top/bottom - so no matter which edge a print shop's
 // hardware (e.g. a flag's sewn grommet header) lands on, only checker squares are
@@ -17,6 +17,15 @@ const GRID_COLS = 12;
 const GRID_ROWS = 8;
 const CERT_COLS = 8;
 const CERT_ROWS = 6;
+
+// Extra sacrificial margin added outside the finished flag on all four sides. The print
+// shop's artwork template insets the finished (visible) area from the submitted artboard by a
+// uniform hem/bleed allowance - measured off Anley's template, a 992 x 662 safe area within a
+// 1077 x 747 artboard, i.e. 42.5px on every side, or 6.42% of the finished flag's short
+// dimension. Artwork submitted without it gets its outer edge eaten by the sewn seam and
+// grommet header, which is what cut the outer checker squares off the first proof. A preset's
+// dimensions are the FINISHED flag; the rendered canvas is that plus this margin all round.
+const BLEED_RATIO = 42.5 / 662;
 
 /**
  * Pixel size of the certificate's slot within the canvas for a given preset. Callers that
@@ -36,26 +45,31 @@ export function getCertPixelSize(preset: Preset): { width: number; height: numbe
  */
 export async function compose(certPngBuffer: Buffer, preset: Preset, options: ComposeOptions = {}): Promise<Buffer> {
   const { jpegQuality = 100 } = options;
-  const canvasW = preset.width;
-  const canvasH = preset.height;
+  const finishedW = preset.width;
+  const finishedH = preset.height;
+  const bleed = Math.round(BLEED_RATIO * finishedH);
+  const canvasW = finishedW + 2 * bleed;
+  const canvasH = finishedH + 2 * bleed;
 
   const certMeta = await sharp(certPngBuffer).metadata();
   if (!certMeta.width || !certMeta.height) {
     throw new Error("Could not read rasterized certificate image dimensions");
   }
 
-  const cellSize = canvasW / GRID_COLS;
+  // The grid is sized against the finished flag, not the bled canvas, so the printed result
+  // keeps the intended 12x8 layout once the hem removes the margin.
+  const cellSize = finishedW / GRID_COLS;
   const certW = CERT_COLS * cellSize;
   const certH = CERT_ROWS * cellSize;
-  const left = ((GRID_COLS - CERT_COLS) / 2) * cellSize;
-  const top = ((GRID_ROWS - CERT_ROWS) / 2) * cellSize;
+  const left = bleed + ((GRID_COLS - CERT_COLS) / 2) * cellSize;
+  const top = bleed + ((GRID_ROWS - CERT_ROWS) / 2) * cellSize;
 
   const resizedCert = await sharp(certPngBuffer)
     .resize(Math.round(certW), Math.round(certH), { fit: "fill" })
     .toBuffer();
 
-  const backgroundSvg = buildBackgroundSvg(canvasW, canvasH, GRID_COLS, GRID_ROWS);
-  const lineWidth = Math.max(3, Math.round(canvasH * 0.0022));
+  const backgroundSvg = buildBackgroundSvg(canvasW, canvasH, GRID_COLS, GRID_ROWS, cellSize, bleed, bleed);
+  const lineWidth = Math.max(3, Math.round(finishedH * 0.0022));
   const borderSvg = buildBorderSvg(canvasW, canvasH, left, top, certW, certH, lineWidth);
 
   const composed = await sharp(Buffer.from(backgroundSvg))

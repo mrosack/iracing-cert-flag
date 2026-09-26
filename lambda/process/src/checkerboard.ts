@@ -5,29 +5,41 @@ export interface CheckerboardOptions {
 
 /**
  * Builds an SVG for a canvasWidth x canvasHeight background: a true 2D checkerboard of
- * `cols` x `rows` squares covering the entire canvas. Since the canvas is exactly 3:2 and
- * cols:rows is exactly 12:8 (also 3:2), each square comes out perfectly square with no
- * rounding - a real checkered-flag pattern, not independently-sized border strips. The
- * certificate is composited on top by the caller, covering a smaller block of the same
- * grid, so the exposed squares form a uniform-size frame around it.
+ * `cols` x `rows` squares of `cellSize`, with the grid's top-left corner anchored at
+ * (originX, originY). Since the finished flag area is exactly 3:2 and cols:rows is exactly
+ * 12:8 (also 3:2), each square comes out perfectly square with no rounding - a real
+ * checkered-flag pattern, not independently-sized border strips. The certificate is
+ * composited on top by the caller, covering a smaller block of the same grid, so the exposed
+ * squares form a uniform-size frame around it.
+ *
+ * Squares in the outermost ring are stretched outward to the canvas edge, filling the bleed
+ * margin the print shop's hem consumes. They're deliberately NOT continued as further
+ * alternating squares: the hem tends to leave a sliver of bleed showing, and a sliver of the
+ * opposite color would read as a misprinted stripe along the edge, whereas an extended square
+ * just looks like part of the pattern.
  */
 export function buildBackgroundSvg(
   canvasWidth: number,
   canvasHeight: number,
   cols: number,
   rows: number,
+  cellSize: number,
+  originX: number,
+  originY: number,
   options: CheckerboardOptions = {}
 ): string {
   const { colorA = "#000000", colorB = "#ffffff" } = options;
-  const cellWidth = canvasWidth / cols;
-  const cellHeight = canvasHeight / rows;
 
   const squares: string[] = [];
   for (let row = 0; row < rows; row++) {
     for (let col = 0; col < cols; col++) {
+      const x0 = col === 0 ? 0 : originX + col * cellSize;
+      const y0 = row === 0 ? 0 : originY + row * cellSize;
+      const x1 = col === cols - 1 ? canvasWidth : originX + (col + 1) * cellSize;
+      const y1 = row === rows - 1 ? canvasHeight : originY + (row + 1) * cellSize;
       const color = (row + col) % 2 === 0 ? colorA : colorB;
       squares.push(
-        `<rect x="${col * cellWidth}" y="${row * cellHeight}" width="${cellWidth}" height="${cellHeight}" fill="${color}"/>`
+        `<rect x="${x0}" y="${y0}" width="${x1 - x0}" height="${y1 - y0}" fill="${color}"/>`
       );
     }
   }

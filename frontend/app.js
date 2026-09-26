@@ -8,6 +8,24 @@ const statusEl = document.getElementById("status");
 const resultEl = document.getElementById("result");
 const previewImg = document.getElementById("preview");
 const downloadLink = document.getElementById("download-link");
+const explainBtn = document.getElementById("explain-btn");
+const explainModal = document.getElementById("explain-modal");
+const explainClose = document.getElementById("explain-close");
+
+const explainBody = explainModal.querySelector(".modal-body");
+
+explainBtn.addEventListener("click", () => {
+  explainModal.showModal();
+  // The modal keeps its scroll position between openings, so a reopen would otherwise resume
+  // partway down. Reset after showModal(), once it has been laid out.
+  explainBody.scrollTop = 0;
+});
+explainClose.addEventListener("click", () => explainModal.close());
+// <dialog> routes backdrop clicks to the dialog element itself; its own box is fully covered
+// by .modal-body, so a click with the dialog as target can only have come from the backdrop.
+explainModal.addEventListener("click", (event) => {
+  if (event.target === explainModal) explainModal.close();
+});
 
 function setStatus(message, isError = false) {
   statusEl.textContent = message;

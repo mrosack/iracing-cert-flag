@@ -21,8 +21,8 @@
       <label class="field">
         <span>Output size</span>
         <select id="preset-input">
-          <option value="12x18in" selected>12&quot; x 18&quot; (2700&times;1800)</option>
-          <option value="2x3ft">2' x 3' (5400&times;3600)</option>
+          <option value="12x18in" selected>12&quot; x 18&quot; flag (2932&times;2032 with bleed)</option>
+          <option value="2x3ft">2' x 3' flag (5862&times;4062 with bleed)</option>
         </select>
       </label>
 
@@ -34,12 +34,54 @@
     <div id="result" hidden>
       <img id="preview" alt="Generated flag preview" hidden />
       <a id="download-link" download="iracing-flag.jpg">Download full-resolution JPG</a>
+      <button type="button" id="explain-btn" class="link-button">Why does the flag look like this?</button>
     </div>
 
-    <p class="disclaimer">Files are processed automatically and deleted within 24 hours. Nothing is stored long-term. Not affiliated with or endorsed by iRacing.
+    <p class="disclaimer">Files are processed automatically and deleted within 24 hours. Nothing is stored long-term. Not affiliated with or endorsed by iRacing.  Not responsible for any loss of money or sanity caused by working with the flag printer.
       <a href="https://github.com/mrosack/iracing-cert-flag" target="_blank" rel="noopener">View source on GitHub</a>
     </p>
   </main>
+
+  <dialog id="explain-modal" aria-labelledby="explain-title">
+    <div class="modal-body">
+      <h2 id="explain-title">Why does the flag look like this?</h2>
+
+      <p>The image is slightly taller and wider than the flag you'll actually receive, and the
+        checkered squares around the edge run right off the side. Both are deliberate.</p>
+
+      <p>A printed flag isn't cut to size &mdash; its edges are folded over and sewn into a hem,
+        which permanently swallows a strip of the artwork all the way around. Print shops
+        account for this with a template like the one below:</p>
+
+      <img src="print-template.png"
+        alt="Print shop artwork template: a white artboard with two cyan guide lines inset from each edge, labelled sewing lines, and the strip outside them labelled bleed." />
+
+      <dl>
+        <dt>Bleed</dt>
+        <dd>The outermost strip. It gets folded under and sewn down, so it never appears on the
+          finished flag.</dd>
+
+        <dt>Sewing lines</dt>
+        <dd>Where the stitching actually runs. Exactly how much lands inside versus outside
+          varies a little from flag to flag.</dd>
+
+        <dt>Safe area</dt>
+        <dd>Everything inside the inner line. This is what you're guaranteed to see.</dd>
+      </dl>
+
+      <p>So the file is generated at the full size the printer needs, with your certificate and a
+        complete checkered border sitting inside the safe area, and the outermost squares
+        stretched outward to fill the bleed. Whatever the hem takes is sacrificial
+        checkerboard &mdash; the certificate and the full pattern survive intact.</p>
+
+      <p>The proportions matter too: printers scale artwork to fit their template and quietly
+        crop whatever overhangs. This image is generated at their exact ratio, so nothing gets
+        trimmed on the way in.</p>
+
+      <button type="button" id="explain-close">Got it</button>
+    </div>
+  </dialog>
+
   <script src="app.js"></script>
 </body>
 </html>
