@@ -18,14 +18,30 @@ const GRID_ROWS = 8;
 const CERT_COLS = 8;
 const CERT_ROWS = 6;
 
-// Extra sacrificial margin added outside the finished flag on all four sides. The print
-// shop's artwork template insets the finished (visible) area from the submitted artboard by a
-// uniform hem/bleed allowance - measured off Anley's template, a 992 x 662 safe area within a
-// 1077 x 747 artboard, i.e. 42.5px on every side, or 6.42% of the finished flag's short
-// dimension. Artwork submitted without it gets its outer edge eaten by the sewn seam and
-// grommet header, which is what cut the outer checker squares off the first proof. A preset's
-// dimensions are the FINISHED flag; the rendered canvas is that plus this margin all round.
-const BLEED_RATIO = 42.5 / 662;
+// Anley's artwork template, measured off the guides they supplied: a 1077 x 747 artboard with
+// two rows of hem stitching inset 21.5 and 42.5 from every edge. The finished flag's visible
+// face runs out to the OUTER stitch row - photos of a printed flag show the fabric edge only a
+// sliver beyond it - so that, not the inner row, is what the checkerboard should fill. (The
+// inner row is the conservative "safe area" mark; sizing the grid to it left the outer ring of
+// squares reading ~26% deeper than the rest once the hem landed further out.)
+const TEMPLATE_WIDTH = 1077;
+const TEMPLATE_HEIGHT = 747;
+const OUTER_STITCH_INSET = 21.5;
+
+// The region inside the outer stitch row is 1034 x 704 (1.469), not 3:2, so a square-celled
+// 12x8 grid can't fill it exactly. Take the largest 3:2 box that fits, which is width-limited:
+// the grid meets the stitch row exactly on the left and right, and stops a little short of it
+// top and bottom. That errs toward a slightly deep outer ring rather than a clipped one, which
+// is the forgiving direction - a chopped-off outer row is what started all this.
+const VISIBLE_WIDTH = TEMPLATE_WIDTH - 2 * OUTER_STITCH_INSET;
+const VISIBLE_HEIGHT = (VISIBLE_WIDTH * GRID_ROWS) / GRID_COLS;
+
+// Sacrificial margin outside the grid, as a fraction of the grid's own width/height. A
+// preset's dimensions are the VISIBLE flag face; the rendered canvas is that plus these
+// margins, which keeps the canvas at the artboard's exact ratio so the printer's fit-to-
+// template scaling doesn't crop it.
+const BLEED_X_RATIO = OUTER_STITCH_INSET / VISIBLE_WIDTH;
+const BLEED_Y_RATIO = (TEMPLATE_HEIGHT - VISIBLE_HEIGHT) / 2 / VISIBLE_HEIGHT;
 
 /**
  * Pixel size of the certificate's slot within the canvas for a given preset. Callers that
@@ -45,31 +61,32 @@ export function getCertPixelSize(preset: Preset): { width: number; height: numbe
  */
 export async function compose(certPngBuffer: Buffer, preset: Preset, options: ComposeOptions = {}): Promise<Buffer> {
   const { jpegQuality = 100 } = options;
-  const finishedW = preset.width;
-  const finishedH = preset.height;
-  const bleed = Math.round(BLEED_RATIO * finishedH);
-  const canvasW = finishedW + 2 * bleed;
-  const canvasH = finishedH + 2 * bleed;
+  const visibleW = preset.width;
+  const visibleH = preset.height;
+  const bleedX = Math.round(BLEED_X_RATIO * visibleW);
+  const bleedY = Math.round(BLEED_Y_RATIO * visibleH);
+  const canvasW = visibleW + 2 * bleedX;
+  const canvasH = visibleH + 2 * bleedY;
 
   const certMeta = await sharp(certPngBuffer).metadata();
   if (!certMeta.width || !certMeta.height) {
     throw new Error("Could not read rasterized certificate image dimensions");
   }
 
-  // The grid is sized against the finished flag, not the bled canvas, so the printed result
+  // The grid is sized against the visible face, not the bled canvas, so the printed result
   // keeps the intended 12x8 layout once the hem removes the margin.
-  const cellSize = finishedW / GRID_COLS;
+  const cellSize = visibleW / GRID_COLS;
   const certW = CERT_COLS * cellSize;
   const certH = CERT_ROWS * cellSize;
-  const left = bleed + ((GRID_COLS - CERT_COLS) / 2) * cellSize;
-  const top = bleed + ((GRID_ROWS - CERT_ROWS) / 2) * cellSize;
+  const left = bleedX + ((GRID_COLS - CERT_COLS) / 2) * cellSize;
+  const top = bleedY + ((GRID_ROWS - CERT_ROWS) / 2) * cellSize;
 
   const resizedCert = await sharp(certPngBuffer)
     .resize(Math.round(certW), Math.round(certH), { fit: "fill" })
     .toBuffer();
 
-  const backgroundSvg = buildBackgroundSvg(canvasW, canvasH, GRID_COLS, GRID_ROWS, cellSize, bleed, bleed);
-  const lineWidth = Math.max(3, Math.round(finishedH * 0.0022));
+  const backgroundSvg = buildBackgroundSvg(canvasW, canvasH, GRID_COLS, GRID_ROWS, cellSize, bleedX, bleedY);
+  const lineWidth = Math.max(3, Math.round(visibleH * 0.0022));
   const borderSvg = buildBorderSvg(canvasW, canvasH, left, top, certW, certH, lineWidth);
 
   const composed = await sharp(Buffer.from(backgroundSvg))
